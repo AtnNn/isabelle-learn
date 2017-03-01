@@ -1,0 +1,208 @@
+Terms:
+  (if a then b else c)
+  (let x = t; y = u in b)
+  (case t of p => a | q => b)
+  x :: t
+  ~ /\ \/ --> <-> 
+  = ~= ALL EX
+  \<lambda> %
+  \<in> : \<subseteq> <= \<union> Un \<inter> Int
+  # @ []
+
+Library:
+  map
+  set finite card
+
+Types:
+  bool: True False
+  nat: 0 | Suc nat
+  list: Nil | Cons 'a "'a list"
+  int
+
+Surprises:
+  "(0 - 1 :: nat) = 0"
+  "(1 div 0 :: int) = 0"
+
+Meta-terms:
+  ==> biglambda
+  "term"
+  identifier
+
+Theory:
+  theory T
+  imports Main
+  begin
+    (* comment *)
+    ...
+  end
+
+Commands:
+  datatype Name = c1 | c2
+  lemma "term"
+  lemma name [simp]: "term"
+  fun f :: "type" where "f pat0 = ..." | "f pat1 = ..." -- type optional
+  definition -- single clause, non-recursive
+  abbreviation -- syntactic sugar, use == instead of =
+  inductive -- for predicates or relationships
+  declare name [thm0, thm1]
+  lemma fixes <typed-vars> assumes <labeled-props> shows <prop>
+    -- introduces assms(1) ... assms(n) vars
+
+Queries:
+  value
+  thm
+  print_trans_rules -- [sym] and [trans] rules
+  print_rules -- [intro] [elim] [dest] rules
+
+Editor tips:
+  select "Show proof state"
+  enable automatic nitpick, quickcheck, try0, sledgehammer
+
+Helpers:
+  quickcheck
+  nitpick
+  try0
+  sledgehammer
+  try
+
+Attributes:
+  -- used by claset (? single step, ! mark safe)
+    Pure.intro
+    Pure.elim
+    Pure.dest
+  -- used by rule and standard (? disabled, ! more aggressive)
+    intro
+    elim
+    dest
+  simp
+  split
+  cong
+  trans
+  sym
+  <attr>?
+  <attr>!
+
+Proof state:
+  -- all formulas/props can be preceded by label:
+  -- label can be single digit
+  -- label for "x > 0" defaults to `x>0`
+  assume "form0"
+  have "form1" by <tactic>
+  show "formn" by <tactic>
+  fix <vars>
+  assume <proposition>
+  from <facts> have <prop> <proof>
+  from <facts> show <prop> <proof>
+  then -- from this
+  thus -- then show (deprecated)
+  hence -- then have (deprecated)
+  have <prop> using <facts> -- from <facts> have <prop>
+  with <facts> -- from <facts> and this
+  next -- next goal
+  obtain <var> where "prop" -- instantiate exists
+  "formula" (is "pattern") -- match ?vars anywhere a term is used
+  show ?thesis -- ?thesis set to current goal from lemma or show
+  let ?var = "term"
+  have A moreover have B ultimately have c -- have a: A have b: B from a b have C
+  { fix <vars> assume <props> have <prop> } -- raw proof for anonymous lemma
+  note <name> = this -- rename a fact
+  case <constructor-pattern-or-inductive-rule>
+    -- after proof (cases <var>) or proof (induction ...)
+    -- sets ?case to the goal and assumes the relevant assumptions
+  assume <impossible-induction> then have False by cases
+  have A also B also C finally D -- like moreover, but combine terms using [trans]
+
+Auto-generated names:
+  <fun>.intros
+  <fun>_defs
+  <fun>.induct
+  <induction>.simps
+  <induction-line-name>.IH -- induction hypothesis
+  <induction-line-name>.hyps -- hypothesis
+  <induction-line-name>.prems -- premises
+  assms -- assumptions. also assms(1) .. assms(n)
+  ?case ?thesis -- in proof
+
+Proofs:
+  proof <proof-states> qed -- method defaults to standard
+  proof <tactic> <proof-states> qed
+  qed <tactic> -- solve remaining goals using tactic
+  proof - -- skips intros
+  apply <tactic>
+  by <tactic> -- apply <tactic> done
+  sorry -- imported from HOLF
+  by <tactic> <tactic> -- like proof <tactic> qed <tactic>, but with backtracking
+  .. -- by standard
+  . -- by this
+
+Tactics:
+  induction <var>
+  induction [var] rule: <fun>.induct
+  simp < auto < fastforce < force
+  auto
+  simp -- rewrites using [simp] thms (from left to right)
+  simp add: <equations>
+  simp only: <equations>
+  simp add: <fun>.intros
+  simp add: <def>_def
+  auto simp add: ...
+  simp split: <datatype>.split
+  simp split: if_splits
+  simp add: algebra_simps
+  arith -- linear arithmetic
+  rule -- backchaining using [intro] [dest] and [elim]
+  rule <backward-rule> -- where rule refers to "A ==> B ==> C". Splits into goals for A and B
+  blast -- complete for FOF, does no rewriting
+  blats intro: <backward-rules>
+  <blast|auto|fastforce> dest: <forward-rules>
+  assumption -- if the goal has the form "A ==> A"
+  metis <equations> -- find solution by rewriting, using only provided equations
+  cases <var> -- try each constructor as a separate goal
+  cases
+    -- try a predicate and its negation a two separate goals
+    -- or split an inductive assumption
+  tac, tac -- sequential
+  tac0; tac -- on results of tac0
+  tac | tac -- alternative
+  tac? -- don't fail
+  tac+ -- repeat at least once
+  tac[n] -- n first subgoals
+  subst <eq> -- perform single substitution
+  subst (asm) <eq> -- on the assumptions
+  subst (<n>) <eq> -- on each position n
+  split <rules> -- single-step case splitting
+  fast best slow
+  deepen -- slow exhaustive search
+  safe clarify clarsimp
+  presburger -- integer linear arithmetic with preprocessing
+  linarith -- linear arithmetic on reals
+  arith -- combination of presburger and linarith
+  algebra -- communtativity, associativity, inverses, ...
+  approximate -- interval arithmetic
+  sos -- sum of squares. can be used to solve polynomial inequalities
+
+Instantiating theorems:
+  thm[of "term0" "term1" ...] -- substitute variables for terms in thm. term can be _
+  thm[where ?X = "term0" and ?Y = "term1"] -- substitute by name
+  thm0[OF thm1 _ thm3] -- if thm0 is "A ==> B" and thm1 "A'", unifies A and A' and returns B
+
+Todo:
+  safe
+  metis <fun>.simps
+  lemma [intro] [...]
+  clarsimp
+  clarify
+  force
+  arith
+  assumption
+  rule/erule/frule/drule/back/insert
+  rule_tac x=a and y=b in thm
+  subgoal_tac
+  induct_tac
+  case_tac
+  using
+  try0 intro: <...>
+  OF
+  consider -- then consider (a) x where A x | (b) y where B y by cases
+  |
+  <datatype>.exhaust

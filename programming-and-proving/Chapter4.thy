@@ -170,23 +170,19 @@ qed
 
 datatype alpha = a | b
 
-fun balanced where
+function balanced where
   balanced_nil: "balanced 0 [] = True" |
   balanced_a: "balanced n (a # xs) = balanced (Suc n) xs" |
   balanced_b: "balanced (Suc n) (b # xs) = balanced n xs" |
   unbalanced_a: "balanced (Suc _) [] = False" |
   unbalanced_b: "balanced 0 (b # _) = False"
+  by (pat_completeness, auto)
+termination by lexicographic_order
 
 inductive S where
   S_empty: "S []" |
   S_match: "S x \<Longrightarrow> S (a # x @ [b])" |
   S_concat: "S x \<Longrightarrow> S y \<Longrightarrow> S (x @ y)"
-
-(*
-inductive T where
-  T_empty: "T []" |
-  T_match: "T x \<Longrightarrow> T y \<Longrightarrow> T (x @ [a] @ y @ [b])"
-*)
 
 lemma S_remove:
   "S x \<Longrightarrow> (x = []) \<or> (\<exists> y z . (x = y @ [a] @ z @ [b]) \<and> S y \<and> S z)"
@@ -220,59 +216,51 @@ lemma append_split: "length cs < length as \<Longrightarrow> as @ bs = cs @ ds \
             drop_all length_drop less_imp_not_less)
 
 lemma S_insert: "S (x @ y) \<Longrightarrow> S (x @ [a, b] @ y)"
-proof -
-  {
-    fix z
-    assume "S z"
-    then have "\<And> x y. z = x @ y \<Longrightarrow> S (x @ [a, b] @ y)"
-    proof (induction rule: S.induct)
-      fix x y :: "alpha list"
-      assume "[] = x @ y"
-      then have "x = [] \<and> y = []" by simp
-      then show "S (x @ [a, b] @ y)" using S_empty S_match by force
-    next
-      fix z x y
-      assume IH: "S z" "\<And>x y. z = x @ y \<Longrightarrow> S (x @ [a, b] @ y)"
-      assume as: "a # z @ [b] = x @ y"
-      show "S (x @ [a, b] @ y)" proof (cases; cases)
-        assume "x = []" "y = []"
-        then show ?thesis using as by simp
-      next
-        assume "x = []" "y \<noteq> []"
-        then show ?thesis using as IH by (metis S_concat S_empty S_match append_Nil)
-      next
-        assume "x \<noteq> []" "y = []"
-        then show ?thesis using as IH by (metis S_concat S_empty S_match append_Nil append_Nil2)
-      next
-        assume not_empty: "x \<noteq> []" "y \<noteq> []"
-        obtain xx where xx: "x = a # xx" using not_empty as by (metis append_eq_Cons_conv)
-        obtain yy where yy: "y = yy @ [b]" using not_empty as
-          by (metis last.simps last_appendR snoc_eq_iff_butlast)
-        have "S (xx @ [a, b] @ yy)" using xx yy IH as by simp
-        then show ?thesis using xx yy by (metis S.simps append.assoc append_Cons)
-      qed
-    next
-      fix u v x y
-      assume IHu: "S u" "\<And>x y. u = x @ y \<Longrightarrow> S (x @ [a, b] @ y)"
-      assume IHv: "S v" "\<And>x y. v = x @ y \<Longrightarrow> S (x @ [a, b] @ y)"
-      assume as: "u @ v = x @ y"
-      show "S (x @ [a, b] @ y)" proof cases
-        assume "length x < length u"
-        then obtain w where w: "u = x @ w" using append_split as by blast
-        then have "S (x @ [a, b] @ w)" using IHu by blast
-        then have "S ((x @ [a, b] @ w) @ v)" using IHv S_concat by blast
-        then show "S (x @ [a, b] @ y)" using as w by simp
-      next
-        assume "~ length x < length u"
-        then obtain w where w: "v = w @ y" using as
-          by (metis append_eq_append_conv_if le_imp_less_Suc less_antisym)
-        then have "S (w @ [a, b] @ y)" using IHv by blast
-        then have "S (u @ (w @ [a, b] @ y))" using IHu S_concat by blast
-        then show "S (x @ [a, b] @ y)" using as w by force
-      qed
-    qed
-  }
-  then show "S (x @ y) \<Longrightarrow> S (x @ [a, b] @ y)" by simp
+proof (induction "x @ y" arbitrary: x y rule: S.induct)
+  fix x y :: "alpha list"
+  assume "[] = x @ y"
+  then have "x = [] \<and> y = []" by simp
+  then show "S (x @ [a, b] @ y)" using S_empty S_match by force
+next
+  fix z x y
+  assume IH: "S z" "\<And>x y. z = x @ y \<Longrightarrow> S (x @ [a, b] @ y)"
+  assume as: "a # z @ [b] = x @ y"
+  show "S (x @ [a, b] @ y)" proof (cases; cases)
+    assume "x = []" "y = []"
+    then show ?thesis using as by simp
+  next
+    assume "x = []" "y \<noteq> []"
+    then show ?thesis using as IH by (metis S_concat S_empty S_match append_Nil)
+  next
+    assume "x \<noteq> []" "y = []"
+    then show ?thesis using as IH by (metis S_concat S_empty S_match append_Nil append_Nil2)
+  next
+    assume not_empty: "x \<noteq> []" "y \<noteq> []"
+    obtain xx where xx: "x = a # xx" using not_empty as by (metis append_eq_Cons_conv)
+    obtain yy where yy: "y = yy @ [b]" using not_empty as
+      by (metis last.simps last_appendR snoc_eq_iff_butlast)
+    have "S (xx @ [a, b] @ yy)" using xx yy IH as by simp
+    then show ?thesis using xx yy by (metis S.simps append.assoc append_Cons)
+  qed
+next
+  fix u v x y
+  assume IHu: "S u" "\<And>x y. u = x @ y \<Longrightarrow> S (x @ [a, b] @ y)"
+  assume IHv: "S v" "\<And>x y. v = x @ y \<Longrightarrow> S (x @ [a, b] @ y)"
+  assume as: "u @ v = x @ y"
+  show "S (x @ [a, b] @ y)" proof cases
+    assume "length x < length u"
+    then obtain w where w: "u = x @ w" using append_split as by blast
+    then have "S (x @ [a, b] @ w)" using IHu by blast
+    then have "S ((x @ [a, b] @ w) @ v)" using IHv S_concat by blast
+    then show "S (x @ [a, b] @ y)" using as w by simp
+  next
+    assume "~ length x < length u"
+    then obtain w where w: "v = w @ y" using as
+      by (metis append_eq_append_conv_if le_imp_less_Suc less_antisym)
+    then have "S (w @ [a, b] @ y)" using IHv by blast
+    then have "S (u @ (w @ [a, b] @ y))" using IHu S_concat by blast
+    then show "S (x @ [a, b] @ y)" using as w by force
+  qed
 qed
 
 lemma balanced_wrap: "balanced n w \<Longrightarrow> balanced (Suc n) (w @ [b])"
@@ -286,96 +274,81 @@ lemma replicate_split: "m < n \<Longrightarrow> replicate n x = replicate m x @ 
 
 theorem "balanced n w = S (replicate n a @ w)" (is "?L = ?R")
 proof
-  show "?L \<Longrightarrow> ?R" proof (induction arbitrary: n rule: balanced.induct)
-    fix n
-    assume "balanced n []"
-    then have "n = 0" using balanced.elims by blast
-    then show "S (replicate n a @ [])" using S_empty by simp
-  next
+  show "?L \<Longrightarrow> ?R" proof (induction n w rule: balanced.induct)
     fix n xs
-    assume IH: "\<And>n. balanced n xs \<Longrightarrow> S (replicate n a @ xs)"
+    assume IH: "balanced (Suc n) xs \<Longrightarrow> S (replicate (Suc n) a @ xs)"
     assume "balanced n (a # xs)"
-    then show "S (replicate n a @ a # xs)" using IH balanced_a
-      by (metis append_Cons replicate_Suc replicate_app_Cons_same)
+    then show "S (replicate n a @ a # xs)" using IH
+      by (simp add: replicate_app_Cons_same)
   next
     fix n xs
-    assume IH: "\<And>n. balanced n xs \<Longrightarrow> S (replicate n a @ xs)"
-    assume as: "balanced n (b # xs)"
-    then obtain m where m: "Suc m = n" using balanced.elims by blast
-    then have "balanced m xs" using as by force
-    then have "S (replicate m a @ xs)" using IH by simp
-    then show "S (replicate n a @ b # xs)" using IH S_insert m
-      by (metis append_Cons append_Nil2 append_eq_append_conv append_eq_append_conv2
-                replicate_Suc replicate_app_Cons_same)
+    assume IH: "balanced n xs \<Longrightarrow> S (replicate n a @ xs)"
+    assume "balanced (Suc n) (b # xs)"
+    then show "S (replicate (Suc n) a @ b # xs)" using IH S_insert
+      by (metis balanced_b append.assoc append_Cons append_Nil2 append_eq_append_conv_if replicate_Suc replicate_append_same)
   next
     fix n
-    assume "balanced n []"
-    then have "n = 0" using balanced.elims by blast
-    then show "S (replicate n a @ [])" using S_empty by simp
+    assume "balanced (Suc n) []"
+    then show "S (replicate (Suc n) a @ [])" by simp
   next
-    fix n xs
-    assume "balanced n (b # xs)"
-    show "S (replicate n a @ b # xs)"
-      (* Isabelle seems to ignore that n is 0 in this case *)
-      sorry
+    fix xs
+    assume "balanced 0 (b # xs)"
+    then show "S (replicate 0 a @ b # xs)" by simp
+  next
+    show "S (replicate 0 a @ [])" using S_empty by simp
   qed
 next
-  {
-    fix v
-    assume "S v"
-    then have "\<And>n w. (v = replicate n a @ w) \<Longrightarrow> balanced n w"
-    proof (induction v rule: S.induct)
-      fix n w
-      assume "[] = replicate n a @ w"
-      then have "w = [] \<and> n = 0" by simp
-      then show "balanced n w" by simp
+  show "?R \<Longrightarrow> ?L"
+  proof (induction "replicate n a @ w" arbitrary: n w rule: S.induct)
+    fix n w
+    assume "[] = replicate n a @ w"
+    then have "w = [] \<and> n = 0" by simp
+    then show "balanced n w" by simp
+  next
+    fix x n w
+    assume IH: "S x" "\<And>n w. x = replicate n a @ w \<Longrightarrow> balanced n w"
+    assume as: "a # x @ [b] = replicate n a @ w"
+    show "balanced n w" proof (cases n)
+      assume "n = 0"
+      have "balanced 0 x" using IH by simp
+      then show "balanced n w" using \<open>n=0\<close> balanced_wrap as by force
     next
-      fix x n w
-      assume IH: "S x" "\<And>n w. x = replicate n a @ w \<Longrightarrow> balanced n w"
-      assume as: "a # x @ [b] = replicate n a @ w"
-      show "balanced n w" proof (cases n)
-        assume "n = 0"
-        have "balanced 0 x" using IH by simp
-        then show "balanced n w" using \<open>n=0\<close> balanced_wrap as by force
-      next
-        fix m
-        assume m: "n = Suc m"
-        then obtain y where y: "y @ [b] = w" using as
-          by (metis (mono_tags) alpha.distinct(1) append_butlast_last_id append_is_Nil_conv
-                    last_ConsR last_append last_snoc list.discI replicate_append_same)
-        then have "x = replicate m a @ y" using m as by force
-        then have "balanced m y" using IH by blast
-        then show "balanced n w" using m y balanced_wrap by blast
-      qed
+      fix m
+      assume m: "n = Suc m"
+      then obtain y where y: "y @ [b] = w" using as
+        by (metis (mono_tags) alpha.distinct(1) append_butlast_last_id append_is_Nil_conv
+                  last_ConsR last_append last_snoc list.discI replicate_append_same)
+      then have "x = replicate m a @ y" using m as by force
+      then have "balanced m y" using IH by blast
+      then show "balanced n w" using m y balanced_wrap by blast
+    qed
+  next
+    fix n w x y
+    assume IHx: "S x" "\<And>n w. x = replicate n a @ w \<Longrightarrow> balanced n w"
+    assume IHy: "S y" "\<And>n w. y = replicate n a @ w \<Longrightarrow> balanced n w"
+    assume as: "x @ y = replicate n a @ w"
+    show "balanced n w" proof cases
+      assume "x = []"
+      then show "balanced n w" using IHy as by simp
     next
-      fix n w x y
-      assume IHx: "S x" "\<And>n w. x = replicate n a @ w \<Longrightarrow> balanced n w"
-      assume IHy: "S y" "\<And>n w. y = replicate n a @ w \<Longrightarrow> balanced n w"
-      assume as: "x @ y = replicate n a @ w"
+      assume x_not_nil: "x \<noteq> []"
       show "balanced n w" proof cases
-        assume "x = []"
-        then show "balanced n w" using IHy as by simp
+        assume "n > length x"
+        then have "x @ y = replicate (length x) a @ replicate (n - length x) a @ w"
+          using as replicate_split by simp
+        then have "x = replicate (length x) a" by simp
+        then have False using x_not_nil IHx
+          by (metis unbalanced_a Nitpick.size_list_simp(2) append_Nil2)
+        then show "balanced n w" by fast
       next
-        assume x_not_nil: "x \<noteq> []"
-        show "balanced n w" proof cases
-          assume "n > length x"
-          then have "x @ y = replicate (length x) a @ replicate (n - length x) a @ w"
-            using as replicate_split by simp
-          then have "x = replicate (length x) a" by simp
-          then have False using x_not_nil IHx
-            by (metis unbalanced_a Nitpick.size_list_simp(2) append_Nil2)
-          then show "balanced n w" by fast
-        next
-          assume small_n: "\<not> length x < n"
-          then obtain z where z: "x = replicate n a @ z" using as append_split
-            by (metis append_Nil2 append_eq_append_conv_if length_replicate linorder_neqE_nat)
-          then have left: "balanced n z" using IHx by blast
-          have right: "balanced 0 y" using IHy by simp
-          have w: "w = z @ y" using z as by simp
-          from left right w show "balanced n w" using balanced_concat by simp
-        qed
+        assume small_n: "\<not> length x < n"
+        then obtain z where z: "x = replicate n a @ z" using as append_split
+          by (metis append_Nil2 append_eq_append_conv_if length_replicate linorder_neqE_nat)
+        then have left: "balanced n z" using IHx by blast
+        have right: "balanced 0 y" using IHy by simp
+        have w: "w = z @ y" using z as by simp
+        from left right w show "balanced n w" using balanced_concat by simp
       qed
     qed
-  }
-  then show "?R \<Longrightarrow> ?L" by simp
+  qed
 qed

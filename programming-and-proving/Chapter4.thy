@@ -184,33 +184,6 @@ inductive S where
   S_match: "S x \<Longrightarrow> S (a # x @ [b])" |
   S_concat: "S x \<Longrightarrow> S y \<Longrightarrow> S (x @ y)"
 
-lemma S_remove:
-  "S x \<Longrightarrow> (x = []) \<or> (\<exists> y z . (x = y @ [a] @ z @ [b]) \<and> S y \<and> S z)"
-proof (induction rule: S.induct)
-  case S_empty
-  then show ?case by fast
-next
-  case (S_match z)
-  then have "(a # z @ [b] = [] @ [a] @ z @ [b]) \<and> S [] \<and> S z"
-    using S_empty by simp
-  then show ?case by fast
-next
-  case (S_concat y p)
-  note IH = this
-  then show ?case proof (cases p)
-    case Nil
-    then show ?thesis using IH by simp
-  next
-    case (Cons h list)
-    note p_cons = this
-    then have "\<exists>yy z. p = yy @ [a] @ z @ [b] \<and> S yy \<and> S z" using IH(4) by fast
-    then obtain yy z where "p = yy @ [a] @ z @ [b] \<and> S yy \<and> S z" by fast
-    then have "y @ p = y @ yy @ [a] @ z @ [b] \<and> S (y @ yy) \<and> S z"
-      using IH S.S_concat by presburger
-    then show ?thesis by force
-  qed
-qed
-
 lemma append_split: "length cs < length as \<Longrightarrow> as @ bs = cs @ ds \<Longrightarrow> \<exists>es. as = cs @ es"
   by (metis add_diff_inverse_nat append_Nil2 append_eq_append_conv_if
             drop_all length_drop less_imp_not_less)
@@ -264,10 +237,10 @@ next
 qed
 
 lemma balanced_wrap: "balanced n w \<Longrightarrow> balanced (Suc n) (w @ [b])"
-  sorry
+  by (induction n w rule: balanced.induct; simp)
 
 lemma balanced_concat: "balanced n x \<Longrightarrow> balanced 0 y \<Longrightarrow> balanced n (x @ y)"
-  sorry
+  by (induction n x rule: balanced.induct; simp)
 
 lemma replicate_split: "m < n \<Longrightarrow> replicate n x = replicate m x @ replicate (n - m) x"
   by (metis add_diff_inverse_nat less_imp_not_less replicate_add)

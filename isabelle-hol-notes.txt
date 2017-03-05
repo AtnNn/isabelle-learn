@@ -41,6 +41,8 @@ Commands:
   lemma "term"
   lemma name [simp]: "term"
   fun f :: "type" where "f pat0 = ..." | "f pat1 = ..." -- type optional
+  function f where <equations> by (pat_completeness, auto) termiantion by lexicographic_order
+    -- non-sequential function
   definition -- single clause, non-recursive
   abbreviation -- syntactic sugar, use == instead of =
   inductive -- for predicates or relationships
@@ -53,6 +55,8 @@ Queries:
   thm
   print_trans_rules -- [sym] and [trans] rules
   print_rules -- [intro] [elim] [dest] rules
+  print_theorems -- list newly defined theorems
+  find_theorems <expr> -- find matching theorems
 
 Editor tips:
   select "Show proof state"
@@ -180,6 +184,9 @@ Tactics:
   algebra -- communtativity, associativity, inverses, ...
   approximate -- interval arithmetic
   sos -- sum of squares. can be used to solve polynomial inequalities
+
+Theorems:
+  ccontr -- classical contradiction
 
 Instantiating theorems:
   thm[of "term0" "term1" ...] -- substitute variables for terms in thm. term can be _

@@ -49,14 +49,22 @@ Commands:
   declare name [thm0, thm1]
   lemma fixes <typed-vars> assumes <labeled-props> shows <prop>
     -- introduces assms(1) ... assms(n) vars
+  method <name> <args> = <method> -- define new proof tactic
+  ... for <fixes> -- e.g. Q :: "'a => bool" and y :: 'a
+  ... methods <tactic names> uses <thm names> declares <named thms>
+  declare [[ show_types ]] -- show types in proof state output
+  declare thm [simp] -- add thm to the simp theorem set
+  named_theorems <name> -- declare a named theorem set
+  lemmas <name> = <thms> -- group theorems
+  lemmas [named thm] = <thms> -- add to named theorems
 
 Queries:
-  value
-  thm
+  value <term>
+  thm <thm>
   print_trans_rules -- [sym] and [trans] rules
   print_rules -- [intro] [elim] [dest] rules
   print_theorems -- list newly defined theorems
-  find_theorems <expr> -- find matching theorems
+  find_theorems <term> -- find matching theorems
 
 Editor tips:
   select "Show proof state"
@@ -139,7 +147,7 @@ Proofs:
   .. -- by standard
   . -- by this
 
-Tactics:
+Methods (aka tactics):
   induction <var>
   induction [var] rule: <fun>.induct
   simp < auto < fastforce < force
@@ -157,10 +165,11 @@ Tactics:
   rule -- backchaining using [intro] [dest] and [elim]
   rule <backward-rule> -- where rule refers to "A ==> B ==> C". Splits into goals for A and B
   blast -- complete for FOF, does no rewriting
-  blats intro: <backward-rules>
+  blast intro: <backward-rules>
   <blast|auto|fastforce> dest: <forward-rules>
   assumption -- if the goal has the form "A ==> A"
-  metis <equations> -- find solution by rewriting, using only provided equations
+  metis <thms> -- find solution by rewriting, using only provided equations
+  meson <thms> -- similar to metis. uses model elimination
   cases <var> -- try each constructor as a separate goal
   cases
     -- try a predicate and its negation a two separate goals
@@ -184,6 +193,22 @@ Tactics:
   algebra -- communtativity, associativity, inverses, ...
   approximate -- interval arithmetic
   sos -- sum of squares. can be used to solve polynomial inequalities
+  pat_completeness -- default proof for fun 
+  lexicographic_order -- default termination proof for fun. fully automatic and verbose on fail
+  relation <term> -- termination proof using the given relation
+  size_change <max/min/ms> <...> -- can be used for termination proofs
+  induction_schema -- provides plumbing for termination proofs
+  match <kind> in <pattern> => `<tactic>` | ...
+    kind: conclusion, premises, premises (local), (<term>), <thmrefs>
+    kind: add [uncurry] to transform A ==> B ==> C into A &&& B ==> C
+    pattern: [<name> [attributes]:] <term> [(<args>)] [for <fixes>] [and ...]
+    args: multi -- bind name to all matching thms (for <name> variables can't be multi)
+    args: (cut), (cut <nat>) [, ...]
+    attributes: thin -- when matching premises, hide premise from subsequent inner matches
+    attributes: intros, ...
+    pattern: _ -- match any proposition
+  fail
+  print_fact, print_term, print_type -- debugging
 
 Theorems:
   ccontr -- classical contradiction
@@ -192,6 +217,7 @@ Instantiating theorems:
   thm[of "term0" "term1" ...] -- substitute variables for terms in thm. term can be _
   thm[where ?X = "term0" and ?Y = "term1"] -- substitute by name
   thm0[OF thm1 _ thm3] -- if thm0 is "A ==> B" and thm1 "A'", unifies A and A' and returns B
+  thm[of (unchecked) ...] -- when inside a match, defer type checking
 
 Todo:
   safe

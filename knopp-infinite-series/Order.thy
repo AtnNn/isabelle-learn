@@ -37,8 +37,13 @@ declare le_def [simp]
 
 definition ge (infix "\<ge>" 50) where
   "a \<ge> b = (\<not> a < b)"
-
 declare ge_def [simp]
+
+definition (in order) min :: "'a \<Rightarrow> 'a \<Rightarrow> 'a" where
+  "min a b = (if a < b then a else b)"
+
+definition (in order) max :: "'a \<Rightarrow> 'a \<Rightarrow> 'a" where
+  "max a b = (if a > b then a else b)"
 
 instantiation natural :: order
 begin

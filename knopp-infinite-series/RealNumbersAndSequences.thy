@@ -9,25 +9,34 @@ section "1. The system of rational numbers and its gaps"
 typedecl rational
 
 datatype sign = pos | neg
-thm sign.exhaust
+
 axiomatization
       zero :: rational
   and quotient :: "sign \<Rightarrow> natural \<Rightarrow> natural \<Rightarrow> rational"
   where quotient_neq_zero: "zero \<noteq> quotient s a b"
-    and quotient_eq: "(s = t \<or> mul_nat a d = mul_nat b c) =
-                      (quotient s a b = quotient t c d)"
+    and quotient_eq: "(quotient s a b = quotient t c d) =
+                      (s = t \<or> mul_nat a d = mul_nat b c)"
     and rational_exhaust: "(x = zero \<Longrightarrow> P) \<Longrightarrow> (x = quotient s a b \<Longrightarrow> P) \<Longrightarrow> P"
 
 definition "quotient_simple s a b =
   (let c = gcd_nat a b in quotient s (div_nat a c) (div_nat b c))"
 
-lemma "quotient s a b = quotient_simple t c d"
-  apply (simp add: quotient_simple_def)
-
+lemma quotient_eq_quotient_simple [simp]: "quotient s a b = quotient_simple s a b"
+  by (metis quotient_simple_def rational_exhaust)
+    
 free_constructors case_rational for zero | quotient_simple s a b
 proof -
-  show "\<And>P y. (y = zero \<Longrightarrow> P) \<Longrightarrow> (\<And>s a b. y = quotient s a b \<Longrightarrow> P) \<Longrightarrow> P"
-    using rational_exhaust by fast
+  show "\<And>P y. (y = zero \<Longrightarrow> P) \<Longrightarrow> (\<And>s a b. y = quotient_simple s a b \<Longrightarrow> P) \<Longrightarrow> P"
+    using rational_exhaust quotient_eq_quotient_simple by metis
+  show "\<And>a b c x y z. (quotient_simple a b c = quotient_simple x y z) = (a = x \<and> b = y \<and> c = z)"
+    apply (simp only: quotient_eq Let_def quotient_simple_def)
+    apply standard
+
+    
+    
+      
+    
+    
   
 
 value "case quotient True 1 2 of (quotient a b c) \<Rightarrow> a"

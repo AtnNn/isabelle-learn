@@ -239,3 +239,4 @@ Todo:
   consider -- then consider (a) x where A x | (b) y where B y by cases
   |
   <datatype>.exhaust
+  THEN

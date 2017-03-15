@@ -1,6 +1,13 @@
 theory Natural
-  imports Main
+  imports Main "~~/src/HOL/Eisbach/Eisbach_Tools"
 begin
+
+lemma give: "P \<Longrightarrow> (P \<Longrightarrow> Q) \<Longrightarrow> Q" by simp
+lemma take: "(P \<Longrightarrow> Q) \<Longrightarrow> P \<Longrightarrow> Q" by simp
+method gives for t :: bool = rule give[of t]
+method takes for t :: bool = rule take[of t]
+method give for t :: bool methods how = (gives t, (how ; fail)[1])
+method take for t :: bool methods how = (takes t, (how ; fail)[1])
 
 -- "Natural numbers, starting from 1"
 
@@ -12,6 +19,7 @@ fun add_nat where
 
 lemma add_nat_associative: "add_nat (add_nat a b) c = add_nat a (add_nat b c)"
   by (induction a b rule: add_nat.induct, auto)
+    
 
 instantiation natural :: one begin
 definition "one_natural = one"
@@ -63,7 +71,12 @@ instance proof
   show "x \<le> y \<or> y \<le> x"
     by (induction x y arbitrary: z rule: less_eq_natural.induct, auto)
 qed
+end
   
+fun to_builtin_nat where
+  "to_builtin_nat one = Suc 0" |
+  "to_builtin_nat (succ n) = Suc (to_builtin_nat n)"
+
 fun mul_nat where
   "mul_nat one n = n" |
   "mul_nat (succ n) m = add_nat m (mul_nat n m)"
@@ -133,10 +146,6 @@ fun leftover_nat where
 
 definition "uncurry f ab = f (fst ab, snd ab)"
 declare uncurry_def [simp]
-
-fun to_builtin_nat where
-  "to_builtin_nat one = Suc 0" |
-  "to_builtin_nat (succ n) = Suc (to_builtin_nat n)"
 
 lemma max_cod: "max a b = c \<Longrightarrow> a = c \<or> b = c"
   by (metis max_def)
@@ -223,14 +232,135 @@ qed
 value "gcd_nat 3 2"
 value "succ_abs_diff_nat 3 2"
 
-fun div_nat div_nat_h where
-  "div_nat a b = div_nat_h a b b" |
-  "div_nat_h one _ _ = one" |
-  "div_nat_h (succ a) (succ b) c = div_nat_h a b c" |
-  "div_nat_h (succ a) one c = succ (div_nat_h a c c)"
+fun succ_diff_nat where
+  "succ_diff_nat a one = a" |
+  "succ_diff_nat one b = one" |
+  "succ_diff_nat (succ a) (succ b) = succ_diff_nat a b"
 
-value "mul_nat 2 1"
+lemma add_one_nat [simp]: "add_nat a one = succ a"
+  by (simp add: add_nat_commutative)
+    
+lemma add_succ_nat [simp]: "add_nat a (succ b) = succ (add_nat a b)"
+  by (induction a "succ b" rule: add_nat.induct, auto)
 
+lemma diff_sum: "(succ_diff_nat a b = succ c) = (c + b = a)"
+  by (induction a b arbitrary: c rule: succ_diff_nat.induct; simp; blast)
+
+lemma diff_lt: "(succ_diff_nat a b = succ c) \<Longrightarrow> c < a"
+  by (induction a b arbitrary: c rule: succ_diff_nat.induct, auto simp add: less_succ)
+    
+definition pred_nat :: "(natural \<times> natural) set" where
+  "pred_nat = {(m, n). n = succ m}"
+  
+definition less_than :: "(natural \<times> natural) set"
+  where "less_than = pred_nat\<^sup>+"
+
+definition measure :: "('a \<Rightarrow> natural) \<Rightarrow> ('a \<times> 'a) set"
+  where "measure = inv_image less_than"
+
+lemma wf_pred_nat: "wf pred_nat"
+  apply (unfold wf_def pred_nat_def)
+  apply clarify
+  apply (induct_tac x)
+   apply blast+
+  done
+
+lemma wf_less_than [iff]: "wf less_than"
+  by (simp add: less_than_def wf_pred_nat [THEN wf_trancl])
+
+lemma wf_measure [iff]: "wf (measure f)"
+  unfolding measure_def
+  by (rule wf_less_than [THEN wf_inv_image])
+
+function div_nat where
+  "div_nat a b = (case succ_diff_nat a b of
+    one \<Rightarrow> one |
+    succ c \<Rightarrow> succ (div_nat c b))"
+  by auto
+termination
+proof (relation "measure (\<lambda>(a, _) \<Rightarrow> a)")
+  show "wf (Natural.measure (\<lambda>x. case x of (a, x) \<Rightarrow> a))"
+    by blast
+  fix a b c
+  assume diff: "succ_diff_nat a b = succ c"
+  then have "c < a"
+    by (induction a b arbitrary: c rule: succ_diff_nat.induct, auto simp: less_succ)
+  from diff have "((\<lambda>x xa. xa = succ x) ^^ to_builtin_nat b) c a"
+  proof (induction b arbitrary: a)
+    fix a
+    assume "succ_diff_nat a one = succ c"
+    then show "((\<lambda>x xa. xa = succ x) ^^ to_builtin_nat one) c a" by auto
+  next
+    fix b a
+    assume IH: "(\<And>a. succ_diff_nat a b = succ c \<Longrightarrow>
+                ((\<lambda>x xa. xa = succ x) ^^ to_builtin_nat b) c a)"
+    assume assm: "succ_diff_nat a (succ b) = succ c"
+    then obtain d where d: "a = succ d" by (cases a, auto)
+    from d assm have "succ_diff_nat d b = succ c" by force
+    then have "((\<lambda>x xa. xa = succ x) ^^ to_builtin_nat b) c d" using IH by blast
+    then show "((\<lambda>x xa. xa = succ x) ^^ to_builtin_nat (succ b)) c a" 
+      by (auto simp: funpow_Suc_right d)
+  qed
+  then show "((c, b), a, b) \<in> measure (\<lambda>x. case x of (a, x) \<Rightarrow> a)"
+    apply (simp add: measure_def less_than_def pred_nat_def trancl_def)
+    apply (subst tranclp_power)
+    apply (rule exI[of _ "to_builtin_nat b"])
+    apply (simp)
+    done
+qed
+    
+lemma div_one [simp]: "div_nat_h a one one = a"
+  apply (induction a one one rule: div_nat.induct, auto)
+
+lemma mul_one [simp]: "mul_nat a one = a"
+  by (induction a, auto)
+
+lemma mul_succ [simp]: "mul_nat a (succ b) = add_nat a (mul_nat a b)"
+  apply (induction a "succ b" rule: mul_nat.induct)
+   apply (auto)
+  using add_nat_associative add_nat_commutative apply auto
+  done
+    
+lemma mul_commute_nat: "mul_nat a b = mul_nat b a"
+  by (induction a b rule: mul_nat.induct, auto)
+
+definition "divides_nat a b = (\<exists>c. mul_nat a c = b)"
+
+lemma mul_div_nat: "divides_nat a b \<Longrightarrow> mul_nat a (div_nat b a) = b"
+proof (induction a "div_nat a b" arbitrary: b rule: mul_nat.induct, auto)
+  show base: "mul_nat one (div_nat b one) = b" by simp
+  fix a
+  assume IH: "divides_nat a b \<Longrightarrow> mul_nat a (div_nat b a) = b"
+    
+    
+    
+lemma mul_div_commute_nat:
+  "divides_nat c b \<Longrightarrow> mul_nat a (div_nat b c) = div_nat (mul_nat a b) c" (is "_ \<Longrightarrow> ?a = ?b")
+proof -
+  assume hyp: "divides_nat c b"
+  
+(*
 lemma "gcd_nat a b = c \<Longrightarrow> mul_nat a (div_nat b c) = mul_nat (div_nat a c) b"
+proof (induction a b arbitrary: c rule: gcd_nat.induct, simp, simp)
+  fix a b c
+  assume IH:
+    "\<And>d e. succ_abs_diff_nat (succ a)
+            (succ b) =
+           succ d \<Longrightarrow>
+           succ a < succ b \<Longrightarrow>
+           gcd_nat (succ a) d = e \<Longrightarrow>
+           mul_nat (succ a) (div_nat d e) =
+           mul_nat (div_nat (succ a) e) d"
+    "\<And>d e. succ_abs_diff_nat (succ a)
+            (succ b) =
+           succ d \<Longrightarrow>
+           \<not> succ a < succ b \<Longrightarrow>
+           gcd_nat (succ b) d = e \<Longrightarrow>
+           mul_nat (succ b) (div_nat d e) =
+           mul_nat (div_nat (succ b) e) d"
+  assume c: "gcd_nat (succ a) (succ b) = c"
+  obtain sd where sd: "succ_abs_diff_nat (succ a) (succ b) = sd" by simp
+  show "mul_nat (succ a) (div_nat (succ b) c) =
+        mul_nat (div_nat (succ a) c) (succ b)" *)
 
 end
